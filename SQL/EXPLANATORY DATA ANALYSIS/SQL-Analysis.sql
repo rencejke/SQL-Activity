@@ -81,3 +81,52 @@ AS (
 SELECT [MONTH], [sum_laidoff], SUM([sum_laidoff]) OVER(ORDER BY [MONTH]) [rolling total]
 FROM ROLLING_TOTAL
 ORDER BY 1 ASC --[sum_laidoff] are getting add row by row in rolling total column
+
+
+SELECT company, SUM(total_laid_off) FROM 
+dbo.layoffs_staging2
+GROUP BY company;
+
+
+SELECT company, YEAR([date]), SUM(total_laid_off) FROM 
+dbo.layoffs_staging2
+GROUP BY company, YEAR([date])
+ORDER BY 3 DESC;
+
+
+WITH CompanyYear AS
+(
+	SELECT company, YEAR([date])[Year], SUM(total_laid_off) [sum_laidoff] FROM 
+	dbo.layoffs_staging2
+	GROUP BY company, YEAR([date])
+), CompanyYearRank AS
+(
+	SELECT *, 
+	DENSE_RANK() OVER(PARTITION BY [Year] ORDER BY [sum_laidoff] desc) [rank] 
+	FROM CompanyYear
+	WHERE [Year] IS NOT NULL
+
+)
+SELECT * 
+FROM CompanyYearRank
+WHERE [rank] <=5 
+--We can see here the top 5 companies who has total laid off per year
+
+WITH IndustryYear AS
+(
+	SELECT Industry, YEAR([date])[Year], SUM(total_laid_off) [sum_laidoff] FROM 
+	dbo.layoffs_staging2
+	GROUP BY Industry, YEAR([date])
+), IndustryYearRank AS
+(
+	SELECT *, 
+	DENSE_RANK() OVER(PARTITION BY [Year] ORDER BY [sum_laidoff] desc) [rank] 
+	FROM IndustryYear
+	WHERE [Year] IS NOT NULL
+
+)
+SELECT * 
+FROM IndustryYearRank
+WHERE [rank] <=5
+--We can see here the top 5 industries who has total laid off per year
+
